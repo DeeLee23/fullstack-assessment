@@ -46,28 +46,68 @@ export default function Home() {
   const [page, setPage] = useState(1);
   const [totalProducts, setTotalProducts] = useState(0);
   const PAGE_SIZE = 20;
+  const [filtersError, setFiltersError] = useState<string | null>(null);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [filtersRefreshKey, setFiltersRefreshKey] = useState(0);
+  const [productsRefreshKey, setProductsRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetch("/api/categories")
-      .then((res) => res.json())
-      .then((data) => setCategories(data.categories));
-  }, []);
+    const controller = new AbortController();
+
+    async function loadCategories() {
+      try {
+        const res = await fetch("/api/categories", { signal: controller.signal });
+        if (!res.ok) throw new Error("Failed to load categories");
+        const data = await res.json();
+        setCategories(data.categories ?? []);
+        setFiltersError(null);
+      } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+        setFiltersError("We couldn't load categories. Please try again.");
+        setCategories([]);
+      }
+    }
+
+    loadCategories();
+
+    return () => controller.abort();
+  }, [filtersRefreshKey]);
 
   useEffect(() => {
     setPage(1);
   }, [search, selectedCategory, selectedSubCategory]);
 
   useEffect(() => {
-    if (selectedCategory) {
-      const params = new URLSearchParams({ category: selectedCategory });
-      fetch(`/api/subcategories?${params.toString()}`)
-        .then((res) => res.json())
-        .then((data) => setSubCategories(data.subCategories));
-    } else {
-      setSubCategories([]);
-      setSelectedSubCategory(undefined);
+    const controller = new AbortController();
+
+    async function loadSubCategories() {
+      if (!selectedCategory) {
+        setSubCategories([]);
+        setSelectedSubCategory(undefined);
+        return;
+      }
+
+      try {
+        const params = new URLSearchParams({ category: selectedCategory });
+        const res = await fetch(`/api/subcategories?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        if (!res.ok) throw new Error("Failed to load subcategories");
+        const data = await res.json();
+        setSubCategories(data.subCategories ?? []);
+        setFiltersError(null);
+      } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+        setFiltersError("We couldn't load subcategories. Please try again.");
+        setSubCategories([]);
+        setSelectedSubCategory(undefined);
+      }
     }
-  }, [selectedCategory]);
+
+    loadSubCategories();
+
+    return () => controller.abort();
+  }, [selectedCategory, filtersRefreshKey]);
 
   useEffect(() => {
     setLoading(true);
@@ -80,21 +120,28 @@ export default function Home() {
     params.append("offset", String((page - 1) * PAGE_SIZE));
 
     fetch(`/api/products?${params.toString()}`, { signal: controller.signal })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to load products");
+        }
+        return res.json();
+      })
       .then((data) => {
         setProducts(data.products ?? []);
         setTotalProducts(data.total ?? 0);
+        setProductsError(null);
         setLoading(false);
       })
       .catch((error) => {
         if (error.name === "AbortError") return;
         setProducts([]);
         setTotalProducts(0);
+        setProductsError("We couldn't load products. Please try again.");
         setLoading(false);
       });
 
     return () => controller.abort();
-  }, [search, selectedCategory, selectedSubCategory, page]);
+  }, [search, selectedCategory, selectedSubCategory, page, productsRefreshKey]);
 
   const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
   const currentOffset = (page - 1) * PAGE_SIZE;
@@ -203,6 +250,34 @@ export default function Home() {
               </Button>
             )}
           </div>
+
+          {filtersError && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span>{filtersError}</span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="h-8"
+                    onClick={() => {
+                      setFiltersError(null);
+                    }}
+                  >
+                    Dismiss
+                  </Button>
+                  <Button
+                    className="h-8"
+                    onClick={() => {
+                      setFiltersError(null);
+                      setFiltersRefreshKey((prev) => prev + 1);
+                    }}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -210,6 +285,20 @@ export default function Home() {
         {loading ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">Loading products...</p>
+          </div>
+        ) : productsError ? (
+          <div className="text-center py-12 space-y-4">
+            <p className="text-muted-foreground">{productsError}</p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setProductsError(null);
+                setProductsRefreshKey((prev) => prev + 1);
+                setLoading(true);
+              }}
+            >
+              Retry
+            </Button>
           </div>
         ) : products.length === 0 ? (
           <div className="text-center py-12">
