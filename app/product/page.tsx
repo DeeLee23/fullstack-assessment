@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useFormState } from 'react-dom';
 
 interface Product {
   stacklineSku: string;
@@ -21,20 +22,36 @@ interface Product {
 
 export default function ProductPage() {
   const searchParams = useSearchParams();
-  const productParam = searchParams.get('product');
+  const sku = searchParams.get("sku");
   const [product, setProduct] = useState<Product | null>(null);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (productParam) {
+    async function load() {
+      if (!sku){
+        setError("No product selected");
+        setProduct(null);
+        return;
+      } 
+      
+      setSelectedImage(0);
+      
       try {
-        const parsedProduct = JSON.parse(productParam);
-        setProduct(parsedProduct);
-      } catch (error) {
-        console.error('Failed to parse product data:', error);
+        const res = await fetch(`/api/products/${sku}`);
+        if (!res.ok) throw new Error("Product not found");
+
+        const data = await res.json();
+        setProduct(data);
+        setError(null);
+      } catch (err) {
+        setError("Unable to load product");
+        setProduct(null);
       }
     }
-  }, [productParam]);
+    
+    load();
+  }, [sku]);
 
   if (!product) {
     return (
