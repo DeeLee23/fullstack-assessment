@@ -26,12 +26,18 @@ Open `http://localhost:3000` after the dev server boots.
 - **Fix Implemented** – Whitelisted both Amazon hosts in `next.config.ts`.  
 - **Why This Approach** – Leveraging Next’s `remotePatterns` retains the benefits of `<Image />` (optimisation, caching) while eliminating the runtime error.
 
+### 4. Catalog pagination capped results at 20 items
+- **Bug / Issue Identified** – Product queries always sent `limit=20` with no pagination UI, so shoppers could only ever see the first 20 matches and the “Showing X products” copy was misleading.  
+- **Fix Implemented** – Added proper client-side pagination: the list now tracks total results, calculates offsets, requests `limit`/`offset` pairs from `/api/products`, and renders numbered page controls with Previous/Next actions.  
+- **Why This Approach** – Maintains performant queries, exposes the full catalog, and keeps the UI responsive without overfetching everything at once.
+
 ## Improvements & Enhancements
 - Product gallery now resets to the first thumbnail whenever a new SKU loads, keeping the hero image in sync (`app/product/[sku]/page.tsx`).  
 - Direct navigation to `/product` without a SKU redirects home, preventing dead-end URLs (`app/product/page.tsx`).  
 - Clean, shareable product URLs (`/product/{sku}`) replace long query strings.  
 - Subcategory dropdown only shows items that belong to the selected parent category, avoiding confusing options.
+- Product pagination now offers direct page-number navigation alongside previous/next controls for faster browsing.
 
 ## Testing
 - `yarn lint`  
-- Manual QA: navigate between multiple products, refresh a detail page, cycle through category/subcategory filters, and hit an invalid SKU to confirm the error state renders correctly.
+- Manual QA: navigate between multiple products, page through the catalog, refresh a detail page, cycle through category/subcategory filters, and hit an invalid SKU to confirm the error state renders correctly.

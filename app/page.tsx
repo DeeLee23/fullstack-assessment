@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,12 +43,19 @@ export default function Home() {
     string | undefined
   >(undefined);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     fetch("/api/categories")
       .then((res) => res.json())
       .then((data) => setCategories(data.categories));
   }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedCategory, selectedSubCategory]);
 
   useEffect(() => {
     if (selectedCategory) {
@@ -64,19 +71,68 @@ export default function Home() {
 
   useEffect(() => {
     setLoading(true);
+    const controller = new AbortController();
     const params = new URLSearchParams();
     if (search) params.append("search", search);
     if (selectedCategory) params.append("category", selectedCategory);
     if (selectedSubCategory) params.append("subCategory", selectedSubCategory);
-    params.append("limit", "20");
+    params.append("limit", PAGE_SIZE.toString());
+    params.append("offset", String((page - 1) * PAGE_SIZE));
 
-    fetch(`/api/products?${params}`)
+    fetch(`/api/products?${params.toString()}`, { signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
-        setProducts(data.products);
+        setProducts(data.products ?? []);
+        setTotalProducts(data.total ?? 0);
+        setLoading(false);
+      })
+      .catch((error) => {
+        if (error.name === "AbortError") return;
+        setProducts([]);
+        setTotalProducts(0);
         setLoading(false);
       });
-  }, [search, selectedCategory, selectedSubCategory]);
+
+    return () => controller.abort();
+  }, [search, selectedCategory, selectedSubCategory, page]);
+
+  const totalPages = Math.max(1, Math.ceil(totalProducts / PAGE_SIZE));
+  const currentOffset = (page - 1) * PAGE_SIZE;
+  const rangeStart = currentOffset + 1;
+  const rangeEnd = currentOffset + products.length;
+  const paginationItems = useMemo<
+    Array<number | "start-ellipsis" | "end-ellipsis">
+  >(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    if (page <= 4) {
+      return [1, 2, 3, 4, 5, "end-ellipsis", totalPages];
+    }
+
+    if (page >= totalPages - 3) {
+      return [
+        1,
+        "start-ellipsis",
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ];
+    }
+
+    return [
+      1,
+      "start-ellipsis",
+      page - 1,
+      page,
+      page + 1,
+      "end-ellipsis",
+      totalPages,
+    ];
+  }, [page, totalPages]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -162,16 +218,13 @@ export default function Home() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground mb-4">
-              Showing {products.length} products
+              Showing {rangeStart}-{rangeEnd} of {totalProducts} products
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {products.map((product) => (
                 <Link
                   key={product.stacklineSku}
-                  href={{
-                    pathname: "/product",
-                    query: { sku: product.stacklineSku},
-                  }}
+                  href={`/product/${product.stacklineSku}`}
                 >
                   <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
                     <CardHeader className="p-0">
@@ -208,6 +261,46 @@ export default function Home() {
                   </Card>
                 </Link>
               ))}
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6">
+              <p className="text-sm text-muted-foreground">
+                Page {page} of {totalPages}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                {paginationItems.map((item, index) =>
+                  typeof item === "number" ? (
+                    <Button
+                      key={item}
+                      variant={item === page ? "default" : "outline"}
+                      onClick={() => setPage(item)}
+                      disabled={item === page}
+                    >
+                      {item}
+                    </Button>
+                  ) : (
+                    <span
+                      key={`${item}-${index}`}
+                      className="px-2 text-sm text-muted-foreground"
+                    >
+                      &hellip;
+                    </span>
+                  )
+                )}
+                <Button
+                  variant="outline"
+                  onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={page >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           </>
         )}
