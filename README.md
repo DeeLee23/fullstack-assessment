@@ -5,10 +5,10 @@ Date: 10/29/2025
 ## Issues Addressed
 
 ### 1. Product detail pages trusted URL payloads
-**Bug / Issue Identified** 
- Product cards were embedding the full product JSON in the query string (`/product?product={...}`). Refreshing a detail page failed with “Product not found,” the URL exposed all product data, and the payload could be tampered with to inject malicious content.  
+- **Bug / Issue Identified** 
+ - Product cards were embedding the full product JSON in the query string (`/product?product={...}`). Refreshing a detail page failed with “Product not found,” the URL exposed all product data, and the payload could be tampered with to inject malicious content.  
 
-**Fix Implemented** 
+- **Fix Implemented** 
  Updated the catalog cards to link to `/product/{sku}` (`app/page.tsx`) and moved the detail screen to a dynamic route that fetches the product via `/api/products/{sku}` (`app/product/[sku]/page.tsx`). Requests to `/product` without a SKU now redirect back to the catalog (`app/product/page.tsx`).  
 
 **Why This Approach** 
