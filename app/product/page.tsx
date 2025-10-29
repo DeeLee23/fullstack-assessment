@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useFormState } from 'react-dom';
 
 interface Product {
   stacklineSku: string;
@@ -44,7 +43,7 @@ export default function ProductPage() {
         const data = await res.json();
         setProduct(data);
         setError(null);
-      } catch (err) {
+      } catch {
         setError("Unable to load product");
         setProduct(null);
       }
@@ -64,7 +63,9 @@ export default function ProductPage() {
             </Button>
           </Link>
           <Card className="p-8">
-            <p className="text-center text-muted-foreground">Product not found</p>
+            <p className="text-center text-muted-foreground">
+              {error ?? "Product not found"}
+            </p>
           </Card>
         </div>
       </div>

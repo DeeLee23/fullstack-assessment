@@ -1,37 +1,36 @@
-# Stackline Full Stack Assignment
+# Stackline Full Stack Assessment
+Author: Dong Lee  
+Date: 10/29/2025
 
-## Overview
-
-This is a sample eCommerce website that includes:
-- Product List Page
-- Search Results Page
-- Product Detail Page
-
-The application contains various bugs including UX issues, design problems, functionality bugs, and potential security vulnerabilities.
-
-## Getting Started
-
+## Running the App
 ```bash
 yarn install
 yarn dev
 ```
+Open `http://localhost:3000` after the dev server boots.
 
-## Your Task
+## Issues Addressed
 
-1. **Identify and fix bugs** - Review the application thoroughly and fix any issues you find
-2. **Document your work** - Create a comprehensive README that includes:
-   - What bugs/issues you identified
-   - How you fixed each issue
-   - Why you chose your approach
-   - Any improvements or enhancements you made
+### 1. Product detail pages trusted URL payloads
+- **Bug / Issue Identified** – Product cards were embedding the full product JSON in the query string (`/product?product={...}`). Refreshing a detail page failed with “Product not found,” the URL exposed all product data, and the payload could be tampered with to inject malicious content.  
+- **Fix Implemented** – Updated the catalog cards to link to `/product/{sku}` (`app/page.tsx`) and moved the detail screen to a dynamic route that fetches the product via `/api/products/{sku}` (`app/product/[sku]/page.tsx`). Requests to `/product` without a SKU now redirect back to the catalog (`app/product/page.tsx`).  
+- **Why This Approach** – Fetching by SKU ensures we always render trusted, up-to-date data, aligns with Next.js routing conventions, and removes the injection surface created by serialising JSON into the URL.
 
-We recommend spending no more than 2 hours on this assignment. We are more interested in the quality of your work and your communication than the amount of time you spend or how many bugs you fix!
+### 2. Detail page flashed an error state while loading
+- **Bug / Issue Identified** – The product page initialised with `product === null`, so it briefly rendered “Product not found” before the fetch completed, causing a visible flicker.  
+- **Fix Implemented** – Tracked product state as `undefined | Product | null` to distinguish loading from failure, reset the gallery index on each load, and surfaced a dedicated loading card until the API response arrives (`app/product/[sku]/page.tsx`).  
+- **Why This Approach** – Keeps the experience smooth, makes real failures obvious, and avoids adding extra components or dependencies.
 
-## Submission
+### 3. Missing Amazon CDN host blocked product images
+- **Bug / Issue Identified** – Next.js image optimisation only allowed `m.media-amazon.com`, but many catalog entries load from `images-na.ssl-images-amazon.com`, so those cards threw `Invalid src prop` errors and rendered without images.  
+- **Fix Implemented** – Whitelisted both Amazon hosts in `next.config.ts`.  
+- **Why This Approach** – Leveraging Next’s `remotePatterns` retains the benefits of `<Image />` (optimisation, caching) while eliminating the runtime error.
 
-- Fork this repository
-- Make your fixes and improvements
-- **Replace this README** with your own that clearly documents all changes and your reasoning
-- Provide your Stackline contact with a link to a git repository where you have committed your changes
+## Improvements & Enhancements
+- Product gallery now resets to the first thumbnail whenever a new SKU loads, keeping the hero image in sync (`app/product/[sku]/page.tsx`).  
+- Direct navigation to `/product` without a SKU redirects home, preventing dead-end URLs (`app/product/page.tsx`).  
+- Clean, shareable product URLs (`/product/{sku}`) replace long query strings.
 
-We're looking for clear communication about your problem-solving process as much as the technical fixes themselves.
+## Testing
+- `yarn lint`  
+- Manual QA: navigate between multiple products, refresh a detail page, and hit an invalid SKU to confirm the error state renders correctly.
