@@ -28,7 +28,7 @@ interface Product {
   title: string;
   categoryName: string;
   subCategoryName: string;
-  imageUrls: string[];
+  imageUrls?: string[];
 }
 
 export default function Home() {
@@ -229,7 +229,7 @@ export default function Home() {
                   <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
                     <CardHeader className="p-0">
                       <div className="relative h-48 w-full overflow-hidden rounded-t-lg bg-muted">
-                        {product.imageUrls[0] && (
+                        {product.imageUrls?.[0] ? (
                           <Image
                             src={product.imageUrls[0]}
                             alt={product.title}
@@ -237,6 +237,10 @@ export default function Home() {
                             className="object-contain p-4"
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                           />
+                        ) : (
+                          <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                            No image available
+                          </div>
                         )}
                       </div>
                     </CardHeader>

@@ -31,6 +31,11 @@ Open `http://localhost:3000` after the dev server boots.
 - **Fix Implemented** – Added proper client-side pagination: the list now tracks total results, calculates offsets, requests `limit`/`offset` pairs from `/api/products`, and renders numbered page controls with Previous/Next actions.  
 - **Why This Approach** – Maintains performant queries, exposes the full catalog, and keeps the UI responsive without overfetching everything at once.
 
+### 5. Products without media caused runtime crashes
+- **Bug / Issue Identified** – Some catalog entries (e.g., certain “Desktops”) ship without `imageUrls` or `featureBullets`, but the UI assumed both arrays existed. Selecting those items triggered `Cannot read properties of undefined` errors.  
+- **Fix Implemented** – Guarded against missing media by treating `imageUrls`/`featureBullets` as optional, resetting the selected thumbnail when the image count changes, and rendering friendly placeholders when assets are absent (`app/page.tsx`, `app/product/[sku]/page.tsx`).  
+- **Why This Approach** – Keeps the experience resilient to incomplete catalog data without masking legitimate products or breaking navigation.
+
 ## Improvements & Enhancements
 - Product gallery now resets to the first thumbnail whenever a new SKU loads, keeping the hero image in sync (`app/product/[sku]/page.tsx`).  
 - Direct navigation to `/product` without a SKU redirects home, preventing dead-end URLs (`app/product/page.tsx`).  
@@ -40,4 +45,4 @@ Open `http://localhost:3000` after the dev server boots.
 
 ## Testing
 - `yarn lint`  
-- Manual QA: navigate between multiple products, page through the catalog, refresh a detail page, cycle through category/subcategory filters, and hit an invalid SKU to confirm the error state renders correctly.
+- Manual QA: navigate between multiple products, page through the catalog, refresh a detail page, cycle through category/subcategory filters, exercise products with and without images/features, and hit an invalid SKU to confirm the error state renders correctly.

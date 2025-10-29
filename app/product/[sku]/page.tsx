@@ -15,8 +15,8 @@ interface Product {
   title: string;
   categoryName: string;
   subCategoryName: string;
-  imageUrls: string[];
-  featureBullets: string[];
+  imageUrls?: string[];
+  featureBullets?: string[];
   retailerSku: string;
 }
 
@@ -65,6 +65,16 @@ export default function ProductPage() {
     return () => controller.abort();
   }, [sku]);
 
+  const images = useMemo(
+    () => product?.imageUrls?.filter((url): url is string => Boolean(url)) ?? [],
+    [product?.imageUrls]
+  );
+  const imageCount = images.length;
+
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [imageCount]);
+
   if (product === undefined) {
     return (
       <div className="min-h-screen bg-background">
@@ -99,6 +109,9 @@ export default function ProductPage() {
     );
   }
 
+  const currentImage = images[selectedImage] ?? null;
+  const featureBullets = product.featureBullets ?? [];
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -114,23 +127,27 @@ export default function ProductPage() {
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 <div className="relative h-96 w-full bg-muted">
-                  {product.imageUrls[selectedImage] && (
+                  {currentImage ? (
                     <Image
-                      src={product.imageUrls[selectedImage]}
+                      src={currentImage}
                       alt={product.title}
                       fill
                       className="object-contain p-8"
                       sizes="(max-width: 1024px) 100vw, 50vw"
                       priority
                     />
+                  ) : (
+                    <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                      No image available
+                    </div>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {product.imageUrls.length > 1 && (
+            {images.length > 1 && (
               <div className="grid grid-cols-4 gap-2">
-                {product.imageUrls.map((url, idx) => (
+                {images.map((url, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedImage(idx)}
@@ -163,12 +180,12 @@ export default function ProductPage() {
               </p>
             </div>
 
-            {product.featureBullets.length > 0 && (
+            {featureBullets.length > 0 && (
               <Card>
                 <CardContent className="pt-6">
                   <h2 className="text-lg font-semibold mb-3">Features</h2>
                   <ul className="space-y-2">
-                    {product.featureBullets.map((feature, idx) => (
+                    {featureBullets.map((feature, idx) => (
                       <li key={idx} className="flex items-start">
                         <span className="mr-2 mt-1 h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
                         <span className="text-sm">{feature}</span>
